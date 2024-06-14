@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Multi-Select Dropdown</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .dropdown {
+            position: relative;
+            width: 300px;
+            margin-bottom: 20px;
+        }
+        .dropdown .select-box, .multi-select .select-box {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .multi-select .select-box div {
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: #e0e0e0;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .multi-select .select-box div span {
+            margin-right: 5px;
+        }
+        .multi-select .select-box div button {
+            background: none;
+            border: none;
+            color: #007bff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .dropdown-content, .options-container {
+            position: absolute;
+            width: 100%;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 10;
+        }
+        .dropdown-content div, .options-container div {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .dropdown-content div:hover, .options-container div:hover {
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Custom Multi-Select Dropdown</h1>
+    
+    <div class="dropdown">
+        <div class="select-box" id="charSelect">
+            Select a character
+        </div>
+        <div class="dropdown-content" id="charDropdown">
+            <div class="char-option" data-char="A">A</div>
+            <div class="char-option" data-char="B">B</div>
+            <div class="char-option" data-char="C">C</div>
+            <!-- Add more characters as needed -->
+        </div>
+    </div>
+    
+    <div class="multi-select" id="multiSelect">
+        <div class="select-box">
+            <div id="selectedOptions"></div>
+        </div>
+        <div class="options-container" id="optionsContainer">
+            <div class="multi-option" data-option="0-9">0-9</div>
+            <div class="multi-option" data-option="00-99">00-99</div>
+            <div class="multi-option" data-option="AAA-ZZZ">AAA-ZZZ</div>
+            <div class="multi-option" data-option="YYYY">YYYY</div>
+            <div class="multi-option" data-option="YYYYYYYY">YYYYYYYY</div>
+        </div>
+    </div>
+    
+    <input type="text" id="concatenatedOptions" readonly style="margin-top: 20px; width: 300px;" oninput="extractRanges()">
+    
+    <div>
+        <label for="startRange">Start Range:</label>
+        <input type="text" id="startRange" readonly>
+    </div>
+    <div>
+        <label for="endRange">End Range:</label>
+        <input type="text" id="endRange" readonly>
+    </div>
+    
+    <div>
+        <label for="userInput">User Input:</label>
+        <input type="text" id="userInput" oninput="validateInput()">
+    </div>
+    
+    <div id="validationResult"></div>
+
+    <script>
+        let selectedOptions = [];
+        let firstCharacter = '';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Attach event listener to the parent element
+            document.body.addEventListener('click', function(event) {
+                if (event.target && event.target.matches('.edit-button')) {
+                    // Handle the edit button click
+                    let row = event.target.closest('tr');
+                    openModalForRow(row);
+                } else if (event.target && event.target.matches('.char-option')) {
+                    selectCharacter(event.target.dataset.char);
+                } else if (event.target && event.target.matches('.multi-option')) {
+                    addOption(event.target.dataset.option);
+                } else if (event.target && event.target.matches('.remove-option')) {
+                    removeOption(event.target.dataset.index);
+                } else if (event.target && event.target.matches('#charSelect')) {
+                    toggleDropdown('charDropdown');
+                } else if (event.target && event.target.matches('#multiSelect .select-box')) {
+                    toggleOptions();
+                }
+            });
+
+            // Rest of your code...
+
+            function openModalForRow(row) {
+                // Your logic to open the modal and populate the form
+            }
+
+            function toggleDropdown(id) {
+                document.getElementById(id).style.display = 'block';
+            }
+
+            function toggleOptions() {
+                document.getElementById('optionsContainer').style.display = 'block';
+            }
+
+            function selectCharacter(char) {
+                firstCharacter = char;
+                document.querySelector('#charSelect').innerText = char;
+                document.querySelector('#userInput').value = char;
+                updateInput();
+                closeDropdown('charDropdown');
+            }
+
+            function addOption(option) {
+                const startRange = document.querySelector('#startRange').value.replace(/[\[\]-]/g, ''); // Remove brackets and hyphen
+                const newOptionLength = option.replace(/[\[\]-]/g, '').length;
+                if (startRange.length + newOptionLength <= 25) {
+                    selectedOptions.push(option);
+                    updateSelected();
+                } else {
+                    alert('Cannot add more options, maximum limit reached');
+                }
+            }
+
+            function removeOption(index) {
+                selectedOptions.splice(index, 1);
+                updateSelected();
+            }
+
+            function updateSelected() {
+                const optionsDiv = document.querySelector('#selectedOptions');
+                optionsDiv.innerHTML = '';
+                selectedOptions.forEach((option, index) => {
+                    const optionTag = document.createElement('div');
+                    optionTag.innerHTML = `<span>${option}</span><button class="remove-option" data-index="${index}">&times;</button>`;
+                    optionsDiv.appendChild(optionTag);
+                });
+
+                updateInput();
+            }
+
+            function updateInput() {
+                const input = document.querySelector('#concatenatedOptions');
+                input.value = `${firstCharacter}${selectedOptions.map(option => `[${option}]`).join('')}`;
+                extractRanges();
+            }
+
+            function closeDropdown(id) {
+                document.querySelector(`#${id}`).style.display = 'none';
+            }
+
+            document.addEventListener('click', function(event) {
+                const multiSelect = document.querySelector('#multiSelect');
+                const optionsContainer = document.querySelector('#optionsContainer');
+                const charDropdown = document.querySelector('#charDropdown');
+                if (!multiSelect.contains(event.target)) {
+                    optionsContainer.style.display = 'none';
+                }
+                if (!document.querySelector('#charSelect').contains(event.target)) {
+                    charDropdown.style.display = 'none';
+                }
+            });
+
+            function extractRanges() {
+                const input = document.querySelector('#concatenatedOptions').value;
+                const ranges = input.match(/\[([^\]]+)\]/g)?.map(range => range.slice(1, -1)) || [];
+                let startRange = firstCharacter;
+                let endRange = firstCharacter;
+
+                ranges.forEach(range => {
+                    if (range.includes('-')) {
+                        const [start, end] = range.split('-');
+                        if (/^\d+$/.test(start) && /^\d+$/.test(end)) {
+                            // Handle numeric ranges, ensuring padding
+                            const maxLength = Math.max(start.length, end.length);
+                            startRange += start.padStart(maxLength, '0');
+                            endRange += end.padStart(maxLength, '9');
+                        } else if (/^[A-Z]+$/.test(start) && /^[A-Z]+$/.test(end)) {
+                            // Handle alphabetic ranges
+                            const maxLength = Math.max(start.length, end.length);
+                            startRange += start.padEnd(maxLength, 'A');
+                            endRange += end.padEnd(maxLength, 'Z');
+                        }
+                    } else {
+                        // Handle fixed-length numeric patterns
+                        if (/^Y+$/.test(range)) {
+                            startRange += '0'.repeat(range.length);
+                            endRange += '9'.repeat(range.length);
+                        } else {
+                            startRange += range[0].repeat(range.length);
+                            endRange += range[range.length - 1].repeat(range.length);
+                        }
+                    }
+                });
+
+                document.querySelector('#startRange').value = startRange;
+                document.querySelector('#endRange').value = endRange;
+            }
+
+            function generateRegex() {
+                const input = document.querySelector('#concatenatedOptions').value;
+                const ranges = input.match(/\[([^\]]+)\]/g)?.map(range => range.slice(1, -1)) || [];
+                let regex = `^${firstCharacter}`;
+
+                ranges.forEach(range => {
+                    if (range.includes('-')) {
+                        const [start, end] = range.split('-');
+                        if (/^\d+$/.test(start) && /^\d+$/.test(end)) {
+                            // Handle numeric ranges
+                            const maxLength = Math.max(start.length, end.length);
+                            regex += `[0-9]{${maxLength}}`;
+                        } else if (/^[A-Z]+$/.test(start) && /^[A-Z]+$/.test(end)) {
+                            // Handle alphabetic ranges
+                            const maxLength = Math.max(start.length, end.length);
+                            regex += `[A-Z]{${maxLength}}`;
+                        }
+                    } else {
+                        // Handle fixed-length numeric patterns
+                        if (/^Y+$/.test(range)) {
+                            regex += `\\d{${range.length}}`;
+                        } else {
+                            regex += `[${range}]`;
+                        }
+                    }
+                });
+
+                regex += `$`;
+                return new RegExp(regex, 'i');  // Add the 'i' flag for case-insensitive matching
+            }
+
+            function validateInput() {
+                const userInput = document.querySelector('#userInput').value;
+                const regex = generateRegex();
+                const validationResult = document.querySelector('#validationResult');
+
+                if (regex.test(userInput)) {
+                    validationResult.innerHTML = 'Validation successful';
+                    validationResult.style.color = 'green';
+                } else {
+                    validationResult.innerHTML = 'Validation unsuccessful';
+                    validationResult.style.color = 'red';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
