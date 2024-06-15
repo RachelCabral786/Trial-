@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert Text to Regex</title>
+</head>
+<body>
+    <h1>Convert Text to Regex</h1>
+    
+    <div>
+        <label for="textInput">Enter Text:</label>
+        <input type="text" id="textInput" oninput="convertToRegex()">
+    </div>
+    
+    <div>
+        <label for="regexOutput">Regex Output:</label>
+        <input type="text" id="regexOutput" readonly>
+    </div>
+
+    <script>
+        function convertToRegex() {
+            const textInput = document.getElementById('textInput').value;
+            const regexOutput = document.getElementById('regexOutput');
+            regexOutput.value = textToRegex(textInput);
+        }
+
+        function textToRegex(text) {
+            // Escape all special characters in the text
+            const escapedText = text.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            // Add start and end anchors to match the whole string
+            return `^${escapedText}$`;
+        }
+    </script>
+</body>
+</html>
