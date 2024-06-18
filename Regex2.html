@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>String to Regex Converter</title>
+</head>
+<body>
+    <h1>String to Regex Converter</h1>
+    
+    <label for="originalString">Original String:</label>
+    <input type="text" id="originalString" placeholder="Enter string with ranges">
+    <button onclick="generateRegex()">Generate Regex</button>
+    
+    <div>
+        <label for="generatedRegex">Generated Regex:</label>
+        <input type="text" id="generatedRegex" readonly>
+    </div>
+    
+    <div>
+        <label for="testString">Test String:</label>
+        <input type="text" id="testString" placeholder="Enter string to test against regex">
+        <button onclick="testRegex()">Test Regex</button>
+    </div>
+    
+    <div id="testResult"></div>
+
+    <script>
+        function generateRegex() {
+            const originalString = document.getElementById('originalString').value;
+            let regexString = originalString;
+
+            // Replace placeholders with regex equivalents
+            regexString = regexString.replace(/\[0-9\]/g, '\\d');
+            regexString = regexString.replace(/\[00-99\]/g, '\\d{2}');
+            regexString = regexString.replace(/\[000-999\]/g, '\\d{3}');
+            regexString = regexString.replace(/\[A-Z\]/g, '[A-Z]');
+            regexString = regexString.replace(/\[AA-ZZ\]/g, '[A-Z]{2}');
+            regexString = regexString.replace(/\[AAA-ZZZ\]/g, '[A-Z]{3}');
+            regexString = regexString.replace(/\[YYYY\]/g, '\\d{4}');
+            regexString = regexString.replace(/\[YYYYYYYY\]/g, '\\d{8}');
+
+            const generatedRegex = `^${regexString}$`;
+            document.getElementById('generatedRegex').value = generatedRegex;
+        }
+
+        function testRegex() {
+            const testString = document.getElementById('testString').value;
+            const regexString = document.getElementById('generatedRegex').value;
+            const regex = new RegExp(regexString);
+
+            const testResult = document.getElementById('testResult');
+            if (regex.test(testString)) {
+                testResult.innerHTML = 'Validation successful';
+                testResult.style.color = 'green';
+            } else {
+                testResult.innerHTML = 'Validation unsuccessful';
+                testResult.style.color = 'red';
+            }
+        }
+    </script>
+</body>
+</html>
