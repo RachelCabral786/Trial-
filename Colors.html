@@ -1,0 +1,61 @@
+from flask import Flask, render_template, request
+import webcolors
+
+app = Flask(__name__)
+
+def hex_to_name(hex_code):
+    try:
+        color_name = webcolors.hex_to_name(hex_code)
+    except ValueError:
+        color_name = None
+    return color_name
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/get_color_name', methods=['POST'])
+def get_color_name():
+    hex_code = request.form['color']
+    color_name = hex_to_name(hex_code)
+    return color_name if color_name else 'Unknown color'
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Picker</title>
+</head>
+<body>
+    <h1>Pick a Color</h1>
+    <form id="colorForm">
+        <label for="color">Choose a color:</label>
+        <input type="color" id="color" name="color">
+        <input type="submit" value="Get Color Name">
+    </form>
+    <p id="colorName"></p>
+    <script>
+        document.getElementById('colorForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const color = document.getElementById('color').value;
+            fetch('/get_color_name', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `color=${encodeURIComponent(color)}`
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('colorName').innerText = `Color Name: ${data}`;
+            });
+        });
+    </script>
+</body>
+</html>
