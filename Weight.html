@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persistent Multi-Select Dropdown</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .dropdown {
+            position: relative;
+            width: 300px;
+            margin-bottom: 20px;
+        }
+        .dropdown .select-box, .multi-select .select-box {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .multi-select .select-box div {
+            margin: 5px;
+            padding: 5px 10px;
+            background-color: #e0e0e0;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .multi-select .select-box div span {
+            margin-right: 5px;
+        }
+        .multi-select .select-box div button {
+            background: none;
+            border: none;
+            color: #007bff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .dropdown-content, .options-container {
+            position: absolute;
+            width: 100%;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 10;
+        }
+        .dropdown-content div, .options-container div {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .dropdown-content div:hover, .options-container div:hover {
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Persistent Multi-Select Dropdown</h1>
+    
+    <div class="dropdown">
+        <div class="select-box" id="charSelect" onclick="toggleDropdown('charDropdown')">
+            Select a character
+        </div>
+        <div class="dropdown-content" id="charDropdown">
+            <!-- Characters will be dynamically loaded here -->
+        </div>
+        <input type="text" id="newChar" placeholder="Add new character">
+        <button onclick="addNewCharacter()">Add Character</button>
+    </div>
+    
+    <div class="multi-select" id="multiSelect">
+        <div class="select-box" onclick="toggleOptions()">
+            <div id="selectedOptions"></div>
+        </div>
+        <div class="options-container" id="optionsContainer">
+            <div onclick="addOption('0-9')">0-9</div>
+            <div onclick="addOption('00-99')">00-99</div>
+            <div onclick="addOption('AA-ZZ')">AA-ZZ</div>
+            <div onclick="addOption('AAA-ZZZ')">AAA-ZZZ</div>
+            <div onclick="addOption('YYYY')">YYYY</div>
+            <div onclick="addOption('YYYYYYYY')">YYYYYYYY</div>
+        </div>
+    </div>
+    
+    <input type="text" id="concatenatedOptions" readonly style="margin-top: 20px; width: 300px;" oninput="extractRanges()">
+    
+    <div>
+        <label for="startRange">Start Range:</label>
+        <input type="text" id="startRange" readonly>
+    </div>
+    <div>
+        <label for="endRange">End Range:</label>
+        <input type="text" id="endRange" readonly>
+    </div>
+    
+    <div>
+        <label for="userInput">User Input:</label>
+        <input type="text" id="userInput" oninput="validateInput()">
+    </div>
+    
+    <div id="validationResult"></div>
+    
+    <div>
+        <label for="weight">Computational Weight:</label>
+        <input type="text" id="weight" readonly>
+    </div>
+
+    <script>
+        let selectedOptions = [];
+        let firstCharacter = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCharacters();
+            loadSelectedOptions();
+        });
+
+        function toggleDropdown(id) {
+            document.getElementById(id).style.display = 'block';
+        }
+
+        function toggleOptions() {
+            document.getElementById('optionsContainer').style.display = 'block';
+        }
+
+        function selectCharacter(char) {
+            firstCharacter = char;
+            document.getElementById('charSelect').innerText = char;
+            document.getElementById('userInput').value = char;
+            updateInput();
+            closeDropdown('charDropdown');
+        }
+
+        function addNewCharacter() {
+            const newChar = document.getElementById('newChar').value.toUpperCase();
+            if (newChar && !characters.includes(newChar)) {
+                characters.push(newChar);
+                localStorage.setItem('characters', JSON.stringify(characters));
+                loadCharacters();
+                document.getElementById('newChar').value = '';
+            }
+        }
+
+        let characters = JSON.parse(localStorage.getItem('characters')) || ['A', 'B', 'C'];
+
+        function loadCharacters() {
+            const charDropdown = document.getElementById('charDropdown');
+            charDropdown.innerHTML = '';
+            characters.forEach(char => {
+                const charElement = document.createElement('div');
+                charElement.textContent = char;
+                charElement.onclick = () => selectCharacter(char);
+                charDropdown.appendChild(charElement);
+            });
+        }
+
+        function addOption(option) {
+            const startRange = document.getElementById('startRange').value.replace(/[\[\]-]/g, ''); // Remove brackets and hyphen
+            const newOptionLength = option.replace(/[\[\]-]/g, '').length;
+            if (startRange.length + newOptionLength <= 25) {
+                selectedOptions.push(option);
+                localStorage.setItem('selectedOptions', JSON.stringify(selectedOptions));
+                updateSelected();
+                calculateWeight();
+            } else {
+                alert('Cannot add more options, maximum limit reached');
+            }
+        }
+
+        function removeOption(index) {
+            selectedOptions.splice(index, 1);
+            localStorage.setItem('selectedOptions', JSON.stringify(selectedOptions));
+            updateSelected();
+            calculateWeight();
+        }
+
+        function updateSelected() {
+            const optionsDiv = document.getElementById('selectedOptions');
+            optionsDiv.innerHTML = '';
+            selectedOptions.forEach((option, index) => {
+                const optionTag = document.createElement('div');
+                optionTag.innerHTML = `<span>${option}</span><button onclick="removeOption(${index})">&times;</button>`;
+                optionsDiv.appendChild(optionTag);
+            });
+
+            updateInput();
+        }
+
+        function loadSelectedOptions() {
+            selectedOptions = JSON.parse(localStorage.getItem('selectedOptions')) || [];
+            updateSelected();
+        }
+
+        function updateInput() {
+            const input = document.getElementById('concatenatedOptions');
+            input.value = `${firstCharacter}${selectedOptions.map(option => `[${option}]`).join('')}`;
+            extractRanges();
+        }
+
+        function closeDropdown(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        document.addEventListener('click', function(event) {
+            const multiSelect = document.getElementById('multiSelect');
+            const optionsContainer = document.getElementById('optionsContainer');
+            const charDropdown = document.getElementById('charDropdown');
+            if (!multiSelect.contains(event.target)) {
+                optionsContainer.style.display = 'none';
+            }
+            if (!document.getElementById('charSelect').contains(event.target)) {
+                charDropdown.style.display = 'none';
+            }
+        });
+
+        function extractRanges() {
+            const input = document.getElementById('concatenatedOptions').value;
+            const ranges = input.match(/\[([^\]]+)\]/g)?.map(range => range.slice(1, -1)) || [];
+            let startRange = firstCharacter;
+            let endRange = firstCharacter;
+
+            ranges.forEach(range => {
+                if (range.includes('-')) {
+                    const [start, end] = range.split('-');
+                    if (/^\d+$/.test(start) && /^\d+$/.test(end)) {
+                        // Handle numeric ranges, ensuring padding
+                        const maxLength = Math.max(start.length, end.length);
+                        startRange += start.padStart(maxLength, '0');
+                        endRange += end.padStart(maxLength, '9');
+                    } else if (/^[A-Z]+$/.test(start) && /^[A-Z]+$/.test(end)) {
+                        // Handle alphabetic ranges
+                        const maxLength = Math.max(start.length, end.length);
+                        startRange += start.padEnd(maxLength, 'A');
+                        endRange += end.padEnd(maxLength, 'Z');
+                    }
+                } else {
+                    // Handle fixed-length numeric patterns
+                    if (/^Y+$/.test(range)) {
+                        startRange += '0'.repeat(range.length);
+                        endRange += '9'.repeat(range.length);
+                    } else {
+                        startRange += range[0].repeat(range.length);
+                        endRange += range[range.length - 1].repeat(range.length);
+                    }
+                }
+            });
+
+            document.getElementById('startRange').value = startRange;
+            document.getElementById('endRange').value = endRange;
+        }
+
+        function generateRegex() {
+            const input = document.getElementById('concatenatedOptions').value;
+            const ranges = input.match(/\[([^\]]+)\]/g)?.map(range => range.slice(1, -1)) || [];
+            let regex = `^${firstCharacter}`;
+
+            ranges.forEach(range => {
+                if (range.includes('-')) {
+                    const [start, end] = range.split('-');
+                    if (/^\d+$/.test(start) && /^\d+$/.test(end)) {
+                        // Handle numeric ranges
+                        const maxLength = Math.max(start.length, end.length);
+                        regex += `[0-9]{${maxLength}}`;
+                    } else if (/^[A-Z]+$/.test(start) && /^[A-Z]+$/.test(end)) {
+                        // Handle alphabetic ranges
+                        const maxLength = Math.max(start.length, end.length);
+                        regex += `[A-Z]{${maxLength}}`;
+                    }
+                } else {
+                    // Handle fixed-length numeric patterns
+                    if (/^Y+$/.test(range)) {
+                        regex += `\\d{${range.length}}`;
+                    } else {
+                        regex += `[${range}]`;
+                    }
+                }
+            });
+
+            regex += `$`;
+            return new RegExp(regex, 'i');  // Add the 'i' flag for case-insensitive matching
+        }
+
+        function validateInput() {
+            const userInput = document.getElementById('userInput').value;
+            const regex = generateRegex();
+            const validationResult = document.getElementById('validationResult');
+
+            if (regex.test(userInput)) {
+                validationResult.innerHTML = 'Validation successful';
+                validationResult.style.color = 'green';
+            } else {
+                validationResult.innerHTML = 'Validation unsuccessful';
+                validationResult.style.color = 'red';
+            }
+        }
+
+        function calculateWeight() {
+            let weight = 1;
+            selectedOptions.forEach(option => {
+                weight *= getWeight(option);
+            });
+            document.getElementById('weight').value = weight;
+        }
+
+        function getWeight(option) {
+            if (option.includes('-')) {
+                const [start, end] = option.split('-');
+                if (/^\d+$/.test(start) && /^\d+$/.test(end)) {
+                    return Math.pow(10, start.length);
+                } else if (/^[A-Z]+$/.test(start) && /^[A-Z]+$/.test(end)) {
+                    return Math.pow(26, start.length);
+                }
+            } else {
+                if (/^Y+$/.test(option)) {
+                    return Math.pow(10, option.length);
+                } else if (/^[A-Z]+$/.test(option)) {
+                    return Math.pow(26, option.length);
+                }
+            }
+            return 1;
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computational Weight Calculator</title>
+</head>
+<body>
+    <h1>Computational Weight Calculator</h1>
+    <form id="weightForm">
+        <label for="selections">Choose ranges:</label>
+        <select id="selections" name="selections" multiple>
+            <option value="0-9">0-9</option>
+            <option value="A-Z">A-Z</option>
+            <option value="AA-ZZ">AA-ZZ</option>
+            <option value="00-99">00-99</option>
+            <option value="AAA-ZZZ">AAA-ZZZ</option>
+            <option value="000-999">000-999</option>
+        </select>
+    </form>
+    <p id="result">Computational Weight: 1</p>
+    <script>
+        function calculateWeight(selections) {
+            let weight = 1;
+            selections.forEach(selection => {
+                if (selection === "0-9") {
+                    weight *= 10;
+                } else if (selection === "A-Z") {
+                    weight *= 26;
+                } else if (selection === "AA-ZZ") {
+                    weight *= 26 ** 2;
+                } else if (selection === "00-99") {
+                    weight *= 100;
+                } else if (selection === "AAA-ZZZ") {
+                    weight *= 26 ** 3;
+                } else if (selection === "000-999") {
+                    weight *= 1000;
+                }
+            });
+            return weight;
+        }
+
+        document.getElementById('selections').addEventListener('change', function() {
+            const selections = Array.from(document.getElementById('selections').selectedOptions).map(option => option.value);
+            const weight = calculateWeight(selections);
+            document.getElementById('result').innerText = `Computational Weight: ${weight}`;
+        });
+    </script>
+</body>
+</html>
+
